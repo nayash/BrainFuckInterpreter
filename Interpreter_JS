@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<title>Web Page Design</title>
+<head>
+<script>
+function run() {
+    var command = document.getElementById("ta_program").value
+    var currentIndex = 0;
+    var pointer = 0;
+    var commandSplit = command.split("&");
+    var program = commandSplit[0];
+    program = program.replace(" ", "");
+    var cells = Array.apply(null, Array(200)).map(function () {return 0;});
+    var inputNo = 1;
+    var providedInputs = command.length - command.replace(/&/g, "").length;
+    var requiredInputs = command.length - command.replace(/,/g, "").length;
+    var numOpeningBrackets=0;
+    var numClosingBrackets=0;
+    var currentBracketLevel=0;
+    var bracketLevelIndices = [];
+    bracketLevelIndices.push("a");
+    var currentParseChar;
+    var i;
+
+    for(i=0; i<program.length; i++){
+        currentParseChar = program.charAt(i);
+        if(currentParseChar == "["){
+            currentBracketLevel++;
+            numOpeningBrackets++;
+            if(bracketLevelIndices.length <= currentBracketLevel || (typeof bracketLevelIndices[currentBracketLevel] == 'undefined')){
+                bracketLevelIndices.splice(currentBracketLevel, 0, i.toString());
+                //document.getElementById("test1").innerHTML += ",[addingA:"+i.toString()+"Val:"+bracketLevelIndices[currentBracketLevel];
+            }else{
+                bracketLevelIndices[currentBracketLevel] += ","+i.toString();
+                //document.getElementById("test1").innerHTML += ",[adding:"+i.toString()+"Val:"+bracketLevelIndices[currentBracketLevel];
+            }
+        }
+        
+        if(currentParseChar == ']'){
+            if(bracketLevelIndices.length <= currentBracketLevel || (typeof bracketLevelIndices[currentBracketLevel] == 'undefined')){
+                bracketLevelIndices.splice(currentBracketLevel, 0, i.toString());
+                //document.getElementById("test1").innerHTML += ",]addingA:"+i.toString()+"Val:"+bracketLevelIndices[currentBracketLevel];
+            }else{
+                bracketLevelIndices[currentBracketLevel] += "-"+i.toString();
+                //document.getElementById("test1").innerHTML += ",]adding:"+i.toString()+"Val:"+bracketLevelIndices[currentBracketLevel];
+            }
+            currentBracketLevel--;
+            numClosingBrackets++;
+        }
+    }
+    var s = "";
+    for(var j=0; j<bracketLevelIndices.length; j++){
+        s += bracketLevelIndices[j] + "!-!";
+    }
+    
+    if(numOpeningBrackets != numClosingBrackets){
+        //syntax error
+        alert("Syntax error! Opening and closing brackets mismatch.");
+        return;
+    }
+        
+    if(requiredInputs != providedInputs){
+        //error
+        alert("Error! Required input & provided input mismatch.");
+        return;
+    }
+    
+    currentBracketLevel = 0;
+    document.getElementById("test").innerHTML = "Result : ";
+    while(currentIndex < program.length){
+        var currentChar = program.charAt(currentIndex);
+        switch(currentChar){
+            case ',' :
+                println(",");
+                if(inputNo < commandSplit.length){
+                    cells[pointer] = commandSplit[inputNo].charAt(0);
+                    println("entered:"+cells[pointer]);
+                }
+                inputNo++;
+                currentIndex++;
+                break;
+            case '[' :
+                println("[");
+                currentBracketLevel++;
+                if(cells[pointer] > 0){
+                    currentIndex++;
+                }else{
+                    currentIndex = getNextClosingBracket(currentIndex,program,currentBracketLevel,bracketLevelIndices);
+                }
+                break;
+            case ']' :
+                println("]");
+                //currentIndex++; //remove it later!!!!!!!!!!!
+                if(cells[pointer] > 0){
+                    currentIndex = getPreviousOpeningBracket(currentIndex,program,currentBracketLevel,bracketLevelIndices);
+                }else{
+                    currentIndex++;
+                }
+                currentBracketLevel--;
+                break;
+            case '+' :
+                println("+");
+                cells[pointer] = cells[pointer] + 1;
+                println("pointer="+pointer+",value="+cells[pointer]);
+                currentIndex++;
+                break;
+            case '-' :
+                println("-");
+                cells[pointer] = cells[pointer] - 1; 
+                println("pointer="+pointer+",value="+cells[pointer]);
+                currentIndex++;
+                break;
+            case '>' :
+                println(">");
+                currentIndex++;
+                pointer++;
+                break;
+            case '<' :
+                println("<");
+                currentIndex++;
+                pointer--;
+                break;
+            case '.' :
+                println(".");
+                currentIndex++;
+                document.getElementById("test").innerHTML = document.getElementById("test").innerHTML+ (requiredInputs == 0 ?(isPrintableChar(cells[pointer]) ? String.fromCharCode(cells[pointer]) : "NonPrintable Charcode-"+cells[pointer]) : cells[pointer]);
+                break;
+            
+            default :
+                //System.out.println("ignored:"+cells[pointer]);
+                currentIndex++;
+                break;
+        }
+    }
+}
+
+function getNextClosingBracket(currentIndex, program, currentBracketLevel, bracketLevelIndices){
+    var result = 0;
+    var indices = bracketLevelIndices[currentBracketLevel];
+    var bracketPairs = indices.split(",");
+    var pairIndex = [];
+    var bytePairIndex = [-1,-2];
+    for(var i=0; i<bracketPairs.length; i++){
+        pairIndex = bracketPairs[i].split("-");
+        bytePairIndex[0] = parseInt(pairIndex[0]);
+        bytePairIndex[1] = parseInt(pairIndex[1]);
+        if(currentIndex == bytePairIndex[0]){
+            result = bytePairIndex[1];
+            break;
+        }
+    }
+    println("]"+ result +"for"+currentIndex+"[");
+    return result;   
+}
+
+function getPreviousOpeningBracket(currentIndex, program, currentBracketLevel, bracketLevelIndices){
+        var result = 0;
+        var indices = bracketLevelIndices[currentBracketLevel];
+        var bracketPairs = indices.split(",");
+        var pairIndex = [];
+        var bytePairIndex = [-1,-2];
+        for(var i=0; i<bracketPairs.length; i++){
+            pairIndex = bracketPairs[i].split("-");
+            bytePairIndex[0] = parseInt(pairIndex[0]);
+            bytePairIndex[1] = parseInt(pairIndex[1]);
+            if(currentIndex == bytePairIndex[1]){
+                result = bytePairIndex[0];
+                break;
+            }
+        }
+        println("["+result +"for"+currentIndex+"]");
+        return result;
+    }
+
+function isPrintableChar(keycode){
+    var valid = 
+        (keycode > 47 && keycode < 58)   || // number keys
+        keycode == 32 || keycode == 13   || // spacebar & return key(s) (if you want to allow carriage returns)
+        (keycode > 64 && keycode < 91)   || // letter keys
+        (keycode > 95 && keycode < 112)  || // numpad keys
+        (keycode > 185 && keycode < 193) || // ;=,-./` (in order)
+        (keycode >= 32 && keycode <= 126) || //all printable chars
+        (keycode > 218 && keycode < 223);   // [\]' (in order)
+
+    return valid;
+}
+    
+function println(s){
+    //document.getElementById("test1").innerHTML = document.getElementById("test1").innerHTML +"\n"+ s;
+}
+
+</script>
+</head>
+<body>
+    <textarea id="ta_program" cols="50" form="usrform" name="comment" rows="4">,>,<[>[>+>+<<-]>>[<<+>>-]<<<-]>>.&2&3</textarea>
+<br />
+<br />
+<input id="btn_run" onclick="run();" type="button" value="Run" />
+<br/>
+<br/>
+<label id="test"></label>
+<br/><br/>
+<label id="test1"></label>
+</body>
+</html>
