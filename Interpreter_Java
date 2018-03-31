@@ -1,0 +1,210 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package brainfuck_compiler;
+
+import java.awt.event.KeyEvent;
+import java.util.ArrayList;
+import java.util.Scanner;
+
+/**
+ *
+ * @author asu_dark_knight
+ */
+public class BrainFuck_Compiler {
+
+    /**
+     * program examples -----
+     * Multiplication : ,>,<[>[>+>+<<-]>>[<<+>>-]<<<-]>>.&2&3
+     */
+    
+    /*
+    * program limitations !!!!!!!
+    * program assumes single digit numerical input
+    * So if alphabets or other non-numerical printable chars are entered, 48 would be subtracted from input
+    * as ASCII of char '0' is 48. Or if multicharacter values are entered then only first char of each input is 
+    * considered as valid input. This may be improved in future.
+    */
+    public static void main(String[] args) {
+        // TODO code application logic here
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Enter your BrainFuck program with parameters separated by '&' : Eg. ,>,[>+<-]<[>>+<<-]>>.&param1&param2");
+        String command = scanner.nextLine();
+        int currentIndex = 0;
+        int pointer = 0;
+        String[] commandSplit = command.split("\\&");
+        String program = commandSplit[0];
+        program = program.replace(" ", "");
+        int[] cells = new int[10];
+        int inputNo = 1;
+        int providedInputs = command.length() - command.replace("&", "").length();
+        int requiredInputs = command.length() - command.replace(",", "").length();
+        int numOpeningBrackets=0;
+        int numClosingBrackets=0;
+        int currentBracketLevel=0;
+        ArrayList<String> bracketLevelIndices = new ArrayList<>();
+        bracketLevelIndices.add("");
+        char currentParseChar;
+        for(int i=0; i<program.length(); i++){
+            currentParseChar = program.charAt(i);
+            if(currentParseChar == '['){
+                currentBracketLevel++;
+                numOpeningBrackets++;
+                if(bracketLevelIndices.size() <= currentBracketLevel || bracketLevelIndices.get(currentBracketLevel) == null)
+                    bracketLevelIndices.add(currentBracketLevel, i+"");
+                else
+                    bracketLevelIndices.set(currentBracketLevel, bracketLevelIndices.get(currentBracketLevel)+","+i);
+            }
+            
+            if(currentParseChar == ']'){
+                if(bracketLevelIndices.size() <= currentBracketLevel || bracketLevelIndices.get(currentBracketLevel) == null)
+                    bracketLevelIndices.add(currentBracketLevel, i+"");
+                else
+                    bracketLevelIndices.set(currentBracketLevel, bracketLevelIndices.get(currentBracketLevel)+"-"+i);
+                currentBracketLevel--;
+                numClosingBrackets++;
+            }
+        }
+        
+        if(numOpeningBrackets != numClosingBrackets){
+            //syntax error
+            System.out.println("Syntax error! Opening and closing brackets mismatch.");
+            return;
+        }
+        
+        if(requiredInputs != providedInputs){
+            //error
+            System.out.println("Error! Required input & provided input mismatch.");
+            return;
+        }
+        
+        int level = 0;
+        for(String s : bracketLevelIndices){
+            System.out.println(level+"="+s);
+            level++;
+        }
+        
+        currentBracketLevel = 0;
+        while(currentIndex < program.length()){
+            char currentChar = program.charAt(currentIndex);
+            switch(currentChar){
+                case ',' :
+                    println(",");
+                    if(inputNo < commandSplit.length){
+                        cells[pointer] = commandSplit[inputNo].charAt(0) - 48;
+                        println("entered:"+cells[pointer]);
+                    }
+                    inputNo++;
+                    currentIndex++;
+                    break;
+                case '[' :
+                    println("[");
+                    currentBracketLevel++;
+                    if(cells[pointer] > 0){
+                        currentIndex++;
+                    }else{
+                        currentIndex = getNextClosingBracket(currentIndex,program,currentBracketLevel,bracketLevelIndices);
+                    }
+                    break;
+                case ']' :
+                    println("]");
+                    if(cells[pointer] > 0){
+                        currentIndex = getPreviousOpeningBracket(currentIndex,program,currentBracketLevel,bracketLevelIndices);
+                    }else{
+                        currentIndex++;
+                    }
+                    currentBracketLevel--;
+                    break;
+                case '+' :
+                    println("+");
+                    cells[pointer] = cells[pointer] + 1;
+                    println("pointer="+pointer+",value="+cells[pointer]);
+                    currentIndex++;
+                    break;
+                case '-' :
+                    println("-");
+                    cells[pointer] = cells[pointer] - 1; 
+                    println("pointer="+pointer+",value="+cells[pointer]);
+                    currentIndex++;
+                    break;
+                case '>' :
+                    println(">");
+                    currentIndex++;
+                    pointer++;
+                    break;
+                case '<' :
+                    println("<");
+                    currentIndex++;
+                    pointer--;
+                    break;
+                case '.' :
+                    println(".");
+                    currentIndex++;
+                    if(isPrintableChar((char)cells[pointer]))
+                        println("true");
+                    else
+                        println("false");
+                    //System.out.println((isPrintableChar((char)cells[pointer]) ? ((char)cells[pointer]) : cells[pointer]));
+                    System.out.println((char)cells[pointer]+"--"+cells[pointer]+",ptr:"+pointer);
+                    break;
+                
+                default :
+                    //System.out.println("ignored:"+cells[pointer]);
+                    currentIndex++;
+                    break;
+            }
+        }
+    }
+    
+    public static boolean isPrintableChar( char c ) {
+        Character.UnicodeBlock block = Character.UnicodeBlock.of( c );
+        return (!Character.isISOControl(c)) &&
+                c != KeyEvent.CHAR_UNDEFINED &&
+                block != null &&
+                block != Character.UnicodeBlock.SPECIALS;
+    }
+    
+    public static int getNextClosingBracket(int currentIndex, String program, int currentBracketLevel,ArrayList<String> bracketLevelIndices){
+        int result = 0;
+        String indices = bracketLevelIndices.get(currentBracketLevel);
+        String[] bracketPairs = indices.split(",");
+        String [] pairIndex;
+        byte[] bytePairIndex = new byte[2];
+        for(int i=0; i<bracketPairs.length; i++){
+            pairIndex = bracketPairs[i].split("-");
+            bytePairIndex[0] = Byte.parseByte(pairIndex[0]);
+            bytePairIndex[1] = Byte.parseByte(pairIndex[1]);
+            if(currentIndex == bytePairIndex[0]){
+                result = bytePairIndex[1];
+                break;
+            }
+        }
+        println("]"+ result +"for"+currentIndex+"[");
+        return result;
+    }
+    
+    public static int getPreviousOpeningBracket(int currentIndex,String program, int currentBracketLevel,ArrayList<String> bracketLevelIndices){
+        int result = 0;
+        String indices = bracketLevelIndices.get(currentBracketLevel);
+        String[] bracketPairs = indices.split(",");
+        String [] pairIndex;
+        byte[] bytePairIndex = new byte[2];
+        for(int i=0; i<bracketPairs.length; i++){
+            pairIndex = bracketPairs[i].split("-");
+            bytePairIndex[0] = Byte.parseByte(pairIndex[0]);
+            bytePairIndex[1] = Byte.parseByte(pairIndex[1]);
+            if(currentIndex == bytePairIndex[1]){
+                result = bytePairIndex[0];
+                break;
+            }
+        }
+        println("["+result +"for"+currentIndex+"]");
+        return result;
+    }
+    
+    public static void println(String string){
+        System.out.println(string);
+    }   
+}
